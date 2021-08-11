@@ -1,0 +1,53 @@
+
+
+
+
+<!-- nosotros renderizamos la mapa en un elemnto de html por referencia a id - esto nos crera problema si vamos a renderizar varias mapas reutulizando un componente en un componente page
+     asi para evitar choque , conflictos debemos usar ids difrentes : nosotros vamos a trabajar esta parte usando REFRENCIA LOCAL a un elemnto html : pero tener en cuenta al renderizar el
+     componentes se ejecuta constructor , luego hook de ngOnit pero con estos metos se ejecuran antes de la construccion de los elemntos html , asi el lugar perfecto para inicializar la rederizacion
+     de una mapa que requiere referencia a una caja html debemos usar el hook correcto , el hook el que se dispara despues de la construccion de los elemntos html del componente porque la logica
+     es tener elemnto html construido luego puedo tener referncia local a el (sino es undefined )
+     Ventaja Referencia local va cambiando dependiendo del componente
+-->
+<div #mapa class="mapa-container"></div> <!-- #mapa : ver class componete directiva para tener refernciaLocal disponible en el componente -->
+
+
+<div class="row">
+
+  <div class="col-12">
+
+      <label class="form-label">
+          Zoom: {{ zoomLevel }}
+          - Lng,Lat : [{{ center[0] | number:'2.4-4' }},{{ center[1] | number:'2.4-4' }}] <!-- del punto central del mapa  -->
+      </label>
+
+
+      <!-- range un tipo de input de boostrap -->
+      <!-- NB: todos lo que sabemos de formularios de Angular se aplica a cualquier input
+           an este caso sensillo tomo refrencia local del input y disparo un evento (input): se dispara cuando un input se cambie (le paso como arg value de la referencia del mismo )
+      -->
+      <input type="range"
+             class="form-range"
+             [value]="zoomLevel"
+             min="0"
+             max="18"
+             #zoomInput
+             (input)="zoomCambio( zoomInput.value )"
+             > <!-- [] paraque toma alor de la prop del componente -->
+  </div>
+
+  <div class="col-12">
+      <button class="btn btn-primary"
+              (click)="zoomOut()"
+      >
+          -
+      </button> <!-- Zommout -->
+
+      <button class="btn btn-primary float-end"
+              (click)="zoomIn()"
+      >
+          +
+      </button> <!-- ZoomIn -->
+  </div>
+
+</div>

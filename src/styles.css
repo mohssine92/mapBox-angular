@@ -1,0 +1,17 @@
+/* You can add global styles to this file, and also import other style files */
+
+
+
+html, body { /* porque cuando rederizo mapa en html ajusto el espacio paraque el div donde la renderizo que es por defect su width y height o px - la voy a ajustar
+              es logico si es 0 , 0 px aunque la mapa esta instala correctamente no va ser visible  */
+  height: 100%;
+  width: 100%;
+}
+
+
+app-menu { /* noten el selector de un componente tambien sera tratado xomo cualquier element html ara darle estilos */
+  position: fixed;
+  top: 20px;
+  left: 20px;
+  z-index: 99999; /* asi se muestran encima de la mapa que occupa 100 % de la pantalla */
+}
