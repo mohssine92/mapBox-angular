@@ -6,13 +6,17 @@ import * as mapboxgl from 'mapbox-gl';
 
 interface MarcadorColor {
   color: string;
-  marker?: mapboxgl.Marker; // ? opcional
+  marker?: mapboxgl.Marker; // ? opcionales - ayudar ami quese flexible mi interfaz
   centro?: [number, number]
 }
 
 
 
-
+/*
+ recuerda bien cuando creamos un marker llamamos post , y cando movemos , usamos ref sujetamos a ella usamos event on , y disparamos update
+  app muy rebotosa . el tema de update requiere identificador , usualmente de la misma manera como hemos creado color podemos usar libreria de creacion de ids
+  unicos tall cual hemos visto en node curso
+*/
 @Component({
   selector: 'app-marcadores',
   templateUrl: './marcadores.component.html',
@@ -40,14 +44,13 @@ interface MarcadorColor {
 export class MarcadoresComponent implements AfterViewInit  {
 
 
-  @ViewChild('mapa') divMapa!: ElementRef;
+  @ViewChild('mapa') divMapa!: ElementRef; // tener  referencia local en laparte de la class
   mapa!: mapboxgl.Map;
-  zoomLevel: number = 15;
-  center: [number, number] = [ -75.921029433568, 45.28719674822362 ];
+  zoomLevel: number = 5;
+  center: [number, number] = [ -7.672192948874313, 31.885307467095085 ];
 
   /*Arreglo de marcadores - necesidades mantener marcadores en arreglo para me permita listarlos*/
   marcadores: MarcadorColor[] = [];
-
 
 
 
@@ -55,29 +58,17 @@ export class MarcadoresComponent implements AfterViewInit  {
 
 
 
-
+  /* hook se dispra despues de la construccion de los elementos de template : elementos html  */
   ngAfterViewInit(): void {
 
     this.mapa = new mapboxgl.Map({ // Objeto de mi mapa
-      container: this.divMapa.nativeElement,
+      container: this.divMapa.nativeElement, // referencia a html
       style: 'mapbox://styles/mapbox/streets-v11',
       center: this.center ,
       zoom: this.zoomLevel
     });
 
-    //this.leerLocalStorage();
-
-
-
-
-
-
-
-
-
-
-
-
+    this.leerLocalStorage();
 
 
 
@@ -127,7 +118,7 @@ export class MarcadoresComponent implements AfterViewInit  {
 
 
     /* marcador le seteamos Lng y lat this.center pero si lo movemos la instancia del marcador sabe donde se encuentra exactamente
-     *
+     * segun implementamos los markers se crean en center static o dinamic - luego movemos los Y el dara cuenta de la ubicacion donde se ha movido
      */
     const nuevoMarcador = new mapboxgl.Marker({ // crear instancia del marcador
       draggable: true, // poner en true - permite - mover instancia del marker
@@ -143,40 +134,142 @@ export class MarcadoresComponent implements AfterViewInit  {
 
     });
 
-    console.log(this.marcadores)
+    //console.log(this.marcadores)
+
+    this.guardarMarcadoresLocalStorage(); // grabar en localstorage <=> Grabar en db usando servicio
+
+    nuevoMarcador.on('dragend', () => {
+      // estoy sujeto a la instanicis msima : objetivo la db - loca o remota este actualziada de las nuevas ccordenadas
+      this.guardarMarcadoresLocalStorage();
+    });
 
 
   }
 
-  /* irMarcador (marker: mapboxgl.Marker) { // 317
+   /* irMarcador (marker: mapboxgl.Marker) { // 317
    /* tener en cuenta recibir coordenadas del localstorage como si hubiera recibirlo de db a nivel de funcionalidad
     * FlyTo es un metode del la instancia de la mapa pide unas coordenadas que requiere la mapa para moverse a la ubicacion de la coordinadas
+    * Obserrvaciones , las ubicaciones actuales se identifican por coordenadas - una instancia de marker dara cuenta de las coordenadas donde este movida
+    * imediatamente
+    * -- usualmente cuando cremos un marcador hacemos peticion post a un backend lo almacenamos en un db , es la form corercta de hacerlos persistente
+    * pero en este jercico lo mantenemos de forma local usando localstorage - redux en caso de reacl segun hemos visto
+    * cuando lo mevemos tambien hacemos peticion post (leer en la docs sobre eventos Observers estar escuchando paraque la db se queda en actualizacion siempre )--
     */
-   irMarcador( marker: mapboxgl.Marker ) {
+  irMarcador( marker: mapboxgl.Marker ) {
      //const { marker:marcador } = marker
 
     this.mapa.flyTo({
       center: marker.getLngLat()
     });
-  }
-
-
-
-  borrarMarcador( ){
-
 
   }
 
 
+  guardarMarcadoresLocalStorage() {
+    /* recueda en local storage solo puedo grabar strings - o objeto serializado cono strings
+     * JSON.stringify
+     * donde debo llamar esta funcion : - cuando agrego marcador - y cuando muevo un marcador (va cambiar ubicacion debo actualizar la db(sea local o remoto))
+     *
+     */
+
+    const lngLatArr: MarcadorColor[] = [];
+
+    this.marcadores.forEach( m => {
+
+      const color = m.color;
+      const { lng, lat } = m.marker!.getLngLat(); // si arrastro un marcador las cooredenadas seran reflejadas(por refe onjeto js) asi en el momento de construccion..
+
+      lngLatArr.push({
+        color: color,
+        centro: [ lng, lat ]
+      });
+
+    })// ya esta lsito el arreglo que quiro almacenar en local Storage
+
+    localStorage.setItem('marcadores', JSON.stringify(lngLatArr) ); // setear prop en localstorage
+
+
+
+
+  }
 
 
 
 
 
+  // mando a llamar justo al inicializar la mapa
+  leerLocalStorage() { // leer memoria y recrear marcadores
+    /* airbnb : supeno estos marcadores recibidos de db ...
+     * este proceso se dispara al construir el componente y elementos html (hooks) - cuando tenga ya la instancia de la mapa lista
+     * alli solicito mi servicio http y empiezo a hacerle caer an la mapa con css de precios
+     */
 
+    if ( !localStorage.getItem('marcadores') ) {
+      return;
+    }
+
+    const lngLatArr: MarcadorColor[] = JSON.parse( localStorage.getItem('marcadores')! ); // ! confi en mis siempre tendras valor en este punto
+
+    //console.log(lngLatArr)
+
+    lngLatArr.forEach( m => { // recuperacion del arreglo
+
+      const newMarker = new mapboxgl.Marker({ // instancia del marcador
+        color: m.color,
+        draggable: true
+        //elemento : html , prive css etc airbnb
+      })
+        .setLngLat( m.centro! ) // [n,n]
+        .addTo( this.mapa ); // refre a la misma mapa - gracias a referencia local
+
+
+
+      this.marcadores.push({ // Reconstruir la coleccion action: agregar ,porque se purga al momento de refresh y destroy del componente
+         marker: newMarker,   // y es el alimentador de localstorage en cada accion - la eleminacion debe ser por accion del cliente
+         color: m.color
+      });
+
+
+      /* gracias en js los objetos trabajan por refrenecia , new marker son mis Objetos marcadores , asi al arrastrar seran los valores de ubicacion actualizado
+         en el momento(por ref ) , y empujados en el array que elementa el storage asi que asi es el proceso ...
+       *
+      */
+      //  aqui estoy sujeto a las refe de mis objetos markers
+      newMarker.on('dragend', () => {//este event cuando se deja de arrastrar ese marcador se dispara
+       /* escuha de event de la instancia de marcadore :
+        * ver doc eventos del objeto marker y mapa explotar conocimientos
+        */
+       //console.log('drag')
+        this.guardarMarcadoresLocalStorage();  // mantener storage actulizado de las coordenadas de cada objeto de la coleccion
+      });
+
+
+    });
+
+  }
+
+
+
+  borrarMarcador( i:number){
+    /* mi array de marcadores tiene el objeto marker en posicion i que quiero eleminar
+       es decir en esta coleccion existen Objetos lleva color y objeto marcador asi si tengo inedx del objeto accedo a el mismo
+       asi accedo al objeto marker(que es propd e este ultimo) y ejecuta metodo remove que tiene objeto marker y se remueve la instancia objeto .
+    */
+    this.marcadores[i].marker?.remove();
+    /* ahora bien , a la coleccion debe eleminarle objeto puesto que ya he eleminado la instancia de marker
+     * y alimentar local storage de las nuevas instancias existentes
+     */
+    this.marcadores.splice( i, 1);
+    this.guardarMarcadoresLocalStorage();
+
+  }
 
 
 }
+
+
+
+
 /* vamos a trabajar con marcadores
  * como poder colocar informacion en la mapa
  /* 315 - Añadir marcadores de forma dinamica : por ejemplo si tenemos las corrdenadas almacenadas en db

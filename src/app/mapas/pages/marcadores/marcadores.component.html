@@ -9,12 +9,12 @@
   <li class="list-group-item"
         *ngFor="let marcador of marcadores; let i = index"
         (click)="irMarcador( marcador.marker! )"
-        (dblclick)="borrarMarcador( )"
+        (dblclick)="borrarMarcador(i)"
         [ngStyle]="{
             'background-color': marcador.color
         }">
         marker {{ i + 1 }}
-  </li>
+  </li>  <!-- dblclick() dobleclick -->
 
 </ul>
 
